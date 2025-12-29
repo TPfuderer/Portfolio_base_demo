@@ -1,11 +1,14 @@
 from pathlib import Path
-from ultralytics import YOLO
-from PIL import Image
-import fitz
-import cv2
-import numpy as np
+from datetime import datetime
+from uuid import uuid4
 
-from portfolio_base.tegut_ocr.paths import YOLO_MODEL
+import fitz
+import numpy as np
+import cv2
+from PIL import Image
+from ultralytics import YOLO
+
+from portfolio_base.tegut_ocr.paths import DATA_DIR, YOLO_MODEL
 
 
 # ======================================================
@@ -14,21 +17,22 @@ from portfolio_base.tegut_ocr.paths import YOLO_MODEL
 
 def detect_products(
     pdf_path: Path,
-    run_dir: Path,
     dpi: int = 450,
     min_conf: float = 0.8
-) -> list[dict]:
+):
     """
     Detect products on a SINGLE PDF page.
-    All outputs are written strictly inside run_dir.
+    Creates its own isolated run_dir (demo & cloud safe).
     """
 
     if not pdf_path.exists():
         raise FileNotFoundError(pdf_path)
 
     # --------------------------------------------------
-    # Directory layout (APP controls run_dir!)
+    # 🔹 Create isolated run directory
     # --------------------------------------------------
+    run_dir = _create_run_dir(DATA_DIR)
+
     pages_dir    = run_dir / "pages"
     yolo_dir     = run_dir / "yolo"
     crops_dir    = run_dir / "crops"
@@ -54,35 +58,44 @@ def detect_products(
     crop_infos = _extract_crops(results, crops_dir, min_conf)
 
     # --------------------------------------------------
-    # 4️⃣ Save labels (absolute pixel format)
+    # 4️⃣ Save labels
     # --------------------------------------------------
     _save_labels(results, labels_dir)
 
     # --------------------------------------------------
-    # 5️⃣ Debug visualization (optional)
+    # 5️⃣ Debug visualization
     # --------------------------------------------------
     _draw_filtered_boxes(results, filtered_dir, min_conf)
 
-    return crop_infos
+    return run_dir, crop_infos
 
 
 # ======================================================
 # 🔧 Internals
 # ======================================================
 
-def _pdf_to_images(pdf_path: Path, dpi: int, out_dir: Path) -> list[Path]:
-    """
-    Render ONLY the first page (demo-friendly).
-    """
-    doc = fitz.open(pdf_path)
-    page = doc[0]
+def _create_run_dir(base_dir: Path) -> Path:
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    run_id = f"run_{ts}_{uuid4().hex[:6]}"
+    run_dir = base_dir / "output" / "runs" / run_id
+    run_dir.mkdir(parents=True, exist_ok=False)
+    return run_dir
 
-    pix = page.get_pixmap(dpi=dpi)
-    out = out_dir / f"{pdf_path.stem}_page_01.png"
-    pix.save(out)
+
+def _pdf_to_images(pdf_path: Path, dpi: int, pages_dir: Path) -> list[Path]:
+    doc = fitz.open(pdf_path)
+    pages = []
+
+    for i, page in enumerate(doc, start=1):
+        pix = page.get_pixmap(dpi=dpi)
+        out = pages_dir / f"{pdf_path.stem}_page_{i:02d}.png"
+        pix.save(out)
+        pages.append(out)
+
+        break  # 🚨 DEMO: only ONE page
 
     doc.close()
-    return [out]
+    return pages
 
 
 def _run_yolo(page_images: list[Path], yolo_dir: Path, min_conf: float):
@@ -100,40 +113,30 @@ def _run_yolo(page_images: list[Path], yolo_dir: Path, min_conf: float):
     )
 
 
-def _extract_crops(
-    results,
-    crops_dir: Path,
-    min_conf: float
-) -> list[dict]:
+def _extract_crops(results, crops_dir: Path, min_conf: float) -> list[dict]:
+    crop_infos = []
 
     raw_dir = crops_dir / "raw"
     ocr_dir = crops_dir / "ocr"
-    raw_dir.mkdir(exist_ok=True)
-    ocr_dir.mkdir(exist_ok=True)
-
-    crop_infos = []
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    ocr_dir.mkdir(parents=True, exist_ok=True)
 
     for result in results:
         img_path = Path(result.path)
         img = Image.open(img_path)
         img_np = np.array(img)
 
-        for j, box in enumerate(result.boxes):
+        for i, box in enumerate(result.boxes):
             conf = float(box.conf[0])
             if conf < min_conf:
                 continue
 
-            x1, y1, x2, y2 = map(
-                int, box.xyxy[0].cpu().numpy()
-            )
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
             cls = int(box.cls[0])
 
             crop = img_np[y1:y2, x1:x2]
-            if crop.size == 0:
-                continue
 
-            base = f"{img_path.stem}_box{j+1:03d}_cls{cls}"
-
+            base = f"{img_path.stem}_box{i+1:03d}_cls{cls}"
             raw_path = raw_dir / f"{base}.jpg"
             ocr_path = ocr_dir / f"{base}.jpg"
 
@@ -153,44 +156,20 @@ def _extract_crops(
 
 
 def _save_labels(results, labels_dir: Path):
-    """
-    Save labels in ABSOLUTE pixel format:
-    cls conf x1 y1 x2 y2
-    """
     for result in results:
         stem = Path(result.path).stem
-        out = labels_dir / f"{stem}.txt"
-
-        lines = []
-        for box in result.boxes:
-            cls = int(box.cls[0])
-            conf = float(box.conf[0])
-            x1, y1, x2, y2 = map(
-                int, box.xyxy[0].cpu().numpy()
-            )
-            lines.append(f"{cls} {conf:.4f} {x1} {y1} {x2} {y2}")
-
-        out.write_text("\n".join(lines), encoding="utf-8")
+        result.save_txt(labels_dir / f"{stem}.txt", save_conf=True)
 
 
 def _draw_filtered_boxes(results, out_dir: Path, min_conf: float):
-    """
-    Optional debug output: draws kept boxes only.
-    """
     for result in results:
         img = cv2.imread(result.path)
-        if img is None:
-            continue
 
         for box in result.boxes:
-            conf = float(box.conf[0])
-            if conf < min_conf:
+            if float(box.conf[0]) < min_conf:
                 continue
 
-            x1, y1, x2, y2 = map(
-                int, box.xyxy[0].cpu().numpy()
-            )
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
             cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-        out_path = out_dir / Path(result.path).name
-        cv2.imwrite(str(out_path), img)
+        cv2.imwrite(str(out_dir / Path(result.path).name), img)
