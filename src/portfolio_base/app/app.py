@@ -22,153 +22,89 @@ sys.path.insert(0, str(SRC_ROOT))
 # -------------------------------------------------
 from portfolio_base.tegut_ocr.yolo_detect import detect_products
 from portfolio_base.tegut_ocr.ocr_easy import extract_text_easyocr
+from portfolio_base.app.definitions import (
+    apply_ocr_mask,
+    zip_directory,
+    export_to_makesense_image_first,
+    import_from_makesense_image_first,
+    recrop_from_yolo_labels,
+    get_yolo_page_images,
+)
 
-# ======================================================
-# 🚀 Kurze Anleitung für schnelle Demos
-# ======================================================
 st.markdown(
     """
-    ### 🚀 So testest du es
-    - ⏱️ **30 Sek**: PDF hochladen
-    - ⏱️ **20–40 Sek**: **Produkte erkennen** (YOLO)
-    - ⏱️ **15 Sek**: Optional MakeSense-Export oder Label-Import
-    - ⏱️ **10–20 Sek**: OCR auf ausgewählten Produkt-Crops
+    <style>
+    h2 { padding-top: 0.8rem; }
+    hr { margin: 2rem 0; }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# ======================================================
+# 🎯 Ziel & Pipeline-Überblick
+# ======================================================
+
+st.markdown("## 🎯 Ziel der Demo")
+
+st.markdown(
+    """
+    Diese Demo zeigt eine **End-to-End Computer-Vision & OCR Pipeline**
+    zur **automatischen Produkt-Erkennung in Supermarkt-Flyern**.
+
+    **Use Case**
+    - Unstrukturierte PDF-Flyer („Messy Real-World Data“)
+    - Automatische Produkt-Boxen (YOLO)
+    - Optional: Manuelle Korrektur (MakeSense)
+    - Texterkennung (OCR) auf einzelnen Produkten
     """
 )
 
+st.markdown("### ⚠️ Limitationen (bewusst gewählt)")
+st.markdown(
+    """
+    - Es wird **nur die erste Seite** des PDFs verarbeitet  
+    - Das PDF ist **selbst erstellt / kuratiert** (kein Web-Scraping)
+    - OCR ist **produktweise**, nicht seitenweise
+    """
+)
+
+st.divider()
+
+st.markdown("## 🧭 Pipeline-Struktur")
+
+st.markdown(
+    """
+    **Input (PDF – 1 Seite)**  
+    ⬇️  
+    **YOLO: Produkt-Erkennung**  
+    ⬇️  
+    **(Optional) Manuelle Korrektur in MakeSense**  
+    ⬇️  
+    **Produkt-Crops**  
+    ⬇️  
+    **OCR auf ausgewähltem Produkt**
+    """
+)
+
+st.caption(
+    "➡️ Jeder Schritt ist unten als eigener Block umgesetzt. "
+    "Die Pipeline kann **ohne manuelle Korrekturen** vollständig durchlaufen werden."
+)
+
+st.divider()
+
 
 # ======================================================
-# 🔧 Hilfsfunktionen
+# 1️⃣ PDF-Eingabe
 # ======================================================
 
-def apply_ocr_mask(img: np.ndarray, top=0, bottom=0, left=0, right=0) -> np.ndarray:
-    """Weiße Maskierung – OCR sieht diese Bereiche nicht."""
-    h, w = img.shape[:2]
-    masked = img.copy()
+st.markdown("## 1️⃣ PDF-Eingabe")
+st.caption(
+    "Eingabe ist eine **einzelne PDF-Seite** mit realem Flyer-Layout "
+    "(Rauschen, Preise, Bilder, unterschiedliche Schriftgrößen)."
+)
 
-    if top > 0:
-        masked[:int(top*h), :] = 255
-    if bottom > 0:
-        masked[int((1-bottom)*h):, :] = 255
-    if left > 0:
-        masked[:, :int(left*w)] = 255
-    if right > 0:
-        masked[:, int((1-right)*w):] = 255
-
-    return masked
-
-
-def strip_confidence(lines: list[str]) -> list[str]:
-    return [" ".join(l.split()[:5]) for l in lines if len(l.split()) >= 5]
-
-
-def zip_directory(dir_path: Path) -> Path:
-    zip_path = dir_path.with_suffix(".zip")
-    if zip_path.exists():
-        zip_path.unlink()
-    shutil.make_archive(str(dir_path), "zip", dir_path)
-    return zip_path
-
-
-def export_to_makesense_image_first(run_dir: Path) -> Path:
-    pages_dir = run_dir / "pages"
-    labels_dir = run_dir / "labels"
-
-    out_dir = run_dir / "makesense_export"
-    images_out = out_dir / "images"
-    labels_out = out_dir / "labels"
-
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
-
-    images_out.mkdir(parents=True)
-    labels_out.mkdir(parents=True)
-
-    for img in pages_dir.glob("*.png"):
-        shutil.copy(img, images_out / img.name)
-
-    for lbl in labels_dir.glob("*.txt"):
-        clean = strip_confidence(lbl.read_text().splitlines())
-        (labels_out / lbl.name).write_text("\n".join(clean), encoding="utf-8")
-
-    (labels_out / "labels.txt").write_text("product\n", encoding="utf-8")
-
-    return out_dir
-
-
-def import_from_makesense_image_first(uploaded_files, run_dir: Path):
-    labels_dir = run_dir / "labels"
-    for p in labels_dir.glob("*.txt"):
-        p.unlink()
-    for f in uploaded_files:
-        (labels_dir / f.name).write_bytes(f.read())
-
-
-def recrop_from_yolo_labels(run_dir: Path) -> list[dict]:
-    pages_dir = run_dir / "pages"
-    labels_dir = run_dir / "labels"
-    crops_dir = run_dir / "crops"
-
-    if crops_dir.exists():
-        shutil.rmtree(crops_dir)
-
-    raw_dir = crops_dir / "raw"
-    ocr_dir = crops_dir / "ocr"
-    raw_dir.mkdir(parents=True)
-    ocr_dir.mkdir(parents=True)
-
-    crop_infos = []
-
-    for label_file in sorted(labels_dir.glob("*.txt")):
-        img_path = pages_dir / f"{label_file.stem}.png"
-        if not img_path.exists():
-            continue
-
-        img = Image.open(img_path)
-        W, H = img.size
-        img_np = np.array(img)
-
-        for i, line in enumerate(label_file.read_text().splitlines()):
-            cls, xc, yc, w, h = map(float, line.split())
-            x1 = int((xc - w/2) * W)
-            y1 = int((yc - h/2) * H)
-            x2 = int((xc + w/2) * W)
-            y2 = int((yc + h/2) * H)
-
-            crop = img_np[y1:y2, x1:x2]
-            base = f"{label_file.stem}_box{i+1:03d}_cls{int(cls)}"
-
-            raw_path = raw_dir / f"{base}.jpg"
-            ocr_path = ocr_dir / f"{base}.jpg"
-
-            Image.fromarray(crop).save(raw_path)
-            Image.fromarray(crop).save(ocr_path)
-
-            crop_infos.append({
-                "raw_path": raw_path,
-                "ocr_path": ocr_path
-            })
-
-    return crop_infos
-
-
-def get_yolo_page_images(run_dir: Path) -> list[Path]:
-    yolo_dir = run_dir / "yolo" / "detect"
-    pages = {}
-
-    for img in yolo_dir.glob("*.jpg"):
-        m = re.search(r"_page_(\d+)", img.name)
-        if m:
-            idx = int(m.group(1))
-            pages.setdefault(idx, img)
-
-    return [pages[k] for k in sorted(pages)]
-
-# ======================================================
-# 1️⃣ PDF Upload (optional mit Demo-PDF)
-# ======================================================
-
-st.markdown("## 📄 PDF-Eingabe")
 
 demo_pdf_path = (
     Path(__file__).resolve().parents[1]
@@ -245,11 +181,18 @@ st.caption(
     "mit unregelmäßigem Layout (Messy Real-World Data)."
 )
 
+st.divider()
 
 
 # ======================================================
-# 2️⃣ Object Detection
+# 2️⃣ Produkt-Erkennung (YOLO)
 # ======================================================
+
+st.markdown("## 2️⃣ Produkt-Erkennung (YOLO)")
+st.caption(
+    "Ein vortrainiertes YOLO-Modell erkennt Produkt-Bounding-Boxes "
+    "auf der PDF-Seite."
+)
 
 st.info(
     "Die Produkterkennung (YOLO) dauert je nach PDF ca. 20–40 Sekunden.",
@@ -263,12 +206,18 @@ if st.button("🔍 Produkte erkennen"):
     st.session_state["crop_paths"] = crop_infos
     st.success(f"{len(crop_infos)} Produkte erkannt")
 
+st.divider()
 
 # ======================================================
-# 3️⃣ Optional: Manuelles Labeling mit MakeSense
+# 3️⃣ Optional: Manuelle Korrektur (MakeSense)
 # ======================================================
 
-st.markdown("## 🏷️ Manuelles Labeling (optional)")
+st.markdown("## 3️⃣ Optional: Manuelle Korrektur (MakeSense)")
+st.caption(
+    "Dieser Schritt ist **optional**. "
+    "Er wird nur benötigt, wenn Bounding Boxes manuell korrigiert werden sollen."
+)
+
 
 use_makesense = st.selectbox(
     "Möchtest du die automatischen YOLO-Labels manuell anpassen?",
@@ -351,11 +300,18 @@ if use_makesense.startswith("✏️"):
 
             st.success("✔ Labels importiert & Produkt-Crops aktualisiert")
 
+st.divider()
 
 
 # ======================================================
-# 4️⃣ Crops auswählen
+# 5️⃣ OCR auf Einzelprodukt
 # ======================================================
+
+st.markdown("## 5️⃣ OCR auf Einzelprodukt")
+st.caption(
+    "Texterkennung erfolgt **nur auf einem ausgewählten Produkt-Crop**, "
+    "nicht auf der gesamten Seite."
+)
 
 if "crop_paths" in st.session_state:
     st.markdown("## 🧩 Produkt-Crops auswählen")
