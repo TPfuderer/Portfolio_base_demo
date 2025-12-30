@@ -35,6 +35,30 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+st.markdown(
+    """
+    <style>
+    .pipeline-box {
+        background-color: #111827;
+        border: 1px solid #374151;
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin: 8px auto;
+        width: 80%;
+        text-align: center;
+        font-size: 1.05rem;
+        font-weight: 500;
+    }
+    .pipeline-arrow {
+        text-align: center;
+        font-size: 1.8rem;
+        margin: 6px 0;
+        color: #9CA3AF;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # ======================================================
 # 🎯 Ziel & Pipeline-Überblick
@@ -47,24 +71,25 @@ st.markdown(
 
 st.markdown("## 🧭 Pipeline-Struktur")
 
-st.markdown(
-    """
-    **1️⃣ Input (PDF – eine Seite)**  
-    ⬇️  
-    **2️⃣ YOLO-basierte Produkterkennung**  
-    ⬇️  
-    **3️⃣ (Optional) Manuelle Korrektur mit MakeSense**  
-    ⬇️  
-    **4️⃣ Produkt-Crops**  
-    ⬇️  
-    **5️⃣ Optical character recognition (OCR) auf ausgewähltem Produkt**
-    """
-)
+st.markdown('<div class="pipeline-box">1️⃣ Input (PDF – eine Seite)</div>', unsafe_allow_html=True)
+st.markdown('<div class="pipeline-arrow">⬇️</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="pipeline-box">2️⃣ YOLO-basierte Produkterkennung</div>', unsafe_allow_html=True)
+st.markdown('<div class="pipeline-arrow">⬇️</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="pipeline-box">3️⃣ (Optional) Manuelle Korrektur mit MakeSense</div>', unsafe_allow_html=True)
+st.markdown('<div class="pipeline-arrow">⬇️</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="pipeline-box">4️⃣ Produkt-Crops</div>', unsafe_allow_html=True)
+st.markdown('<div class="pipeline-arrow">⬇️</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="pipeline-box">5️⃣ Optical character recognition (OCR) auf ausgewähltem Produkt</div>', unsafe_allow_html=True)
 
 st.caption(
     "Jeder Schritt ist unten als eigener Block umgesetzt. "
-    "Die Pipeline kann vollständig **ohne manuelle Korrekturen** durchlaufen werden."
+    "Die Pipeline kann vollständig ohne manuelle Korrekturen durchlaufen werden."
 )
+
 
 st.divider()
 
