@@ -23,6 +23,19 @@ sys.path.insert(0, str(SRC_ROOT))
 from portfolio_base.tegut_ocr.yolo_detect import detect_products
 from portfolio_base.tegut_ocr.ocr_easy import extract_text_easyocr
 
+# ======================================================
+# 🚀 Kurze Anleitung für schnelle Demos
+# ======================================================
+st.markdown(
+    """
+    ### 🚀 So testest du es
+    - ⏱️ **30 Sek**: PDF hochladen
+    - ⏱️ **20–40 Sek**: **Produkte erkennen** (YOLO)
+    - ⏱️ **15 Sek**: Optional MakeSense-Export oder Label-Import
+    - ⏱️ **10–20 Sek**: OCR auf ausgewählten Produkt-Crops
+    """
+)
+
 
 # ======================================================
 # 🔧 Hilfsfunktionen
@@ -164,12 +177,19 @@ with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
     tmp.write(uploaded_file.read())
     pdf_path = Path(tmp.name)
 
-st.success("PDF hochgeladen")
+st.success(f"PDF geladen: {uploaded_file.name}")
+
 
 
 # ======================================================
 # 2️⃣ Object Detection
 # ======================================================
+
+st.info(
+    "Die Produkterkennung (YOLO) dauert je nach PDF ca. 20–40 Sekunden.",
+    icon="🧠"
+)
+
 
 if st.button("🔍 Produkte erkennen"):
     run_dir, crop_infos = detect_products(pdf_path)
@@ -256,7 +276,6 @@ if st.session_state.get("selected_crops"):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
         masked = apply_ocr_mask(img, top, bottom, left, right)
-
         st.session_state["ocr_preview_image"] = masked
 
     # -------------------------------
@@ -274,6 +293,12 @@ if st.session_state.get("selected_crops"):
         # -------------------------------
         # OCR ausführen
         # -------------------------------
+
+        st.info(
+            "EasyOCR erkennt nun Text auf den ausgewählten Produktbildern (ca. 10–20 Sekunden).",
+            icon="🔤"
+        )
+
         if st.button("🔤 OCR starten"):
             res = extract_text_easyocr(st.session_state["ocr_preview_image"])
 
