@@ -265,7 +265,7 @@ if use_makesense.startswith("✏️"):
     if action.startswith("📤") and "RUN_DIR" in st.session_state:
         st.info(
             "Exportiert erkannte Seiten + YOLO-Labels "
-            "→ Upload ZIP direkt in MakeSense.",
+            "→ Unpack ZIP und upload in makesense manuell.",
             icon="⬆️"
         )
 
