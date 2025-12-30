@@ -1,12 +1,7 @@
 import sys
 from pathlib import Path
-from datetime import datetime
 import tempfile
-import re
-import shutil
-import zipfile
 
-import numpy as np
 import cv2
 import streamlit as st
 from PIL import Image
@@ -45,51 +40,57 @@ st.markdown(
 # 🎯 Ziel & Pipeline-Überblick
 # ======================================================
 
-st.markdown("## 🎯 Ziel der Demo")
-
 st.markdown(
-    """
-    Diese Demo zeigt eine **End-to-End Computer-Vision & OCR Pipeline**
-    zur **automatischen Produkt-Erkennung in Supermarkt-Flyern**.
-
-    **Use Case**
-    - Unstrukturierte PDF-Flyer („Messy Real-World Data“)
-    - Automatische Produkt-Boxen (YOLO)
-    - Optional: Manuelle Korrektur (MakeSense)
-    - Texterkennung (OCR) auf einzelnen Produkten
-    """
+    "## Demo einer Pipeline zur optical character recognition (OCR) "
+    "für Produkterkennung und Texterfassung in Tegut-Supermarktflyern"
 )
-
-st.markdown("### ⚠️ Limitationen (bewusst gewählt)")
-st.markdown(
-    """
-    - Es wird **nur die erste Seite** des PDFs verarbeitet  
-    - Das PDF ist **selbst erstellt / kuratiert** (kein Web-Scraping)
-    - OCR ist **produktweise**, nicht seitenweise
-    """
-)
-
-st.divider()
 
 st.markdown("## 🧭 Pipeline-Struktur")
 
 st.markdown(
     """
-    **Input (PDF – 1 Seite)**  
+    **1️⃣ Input (PDF – eine Seite)**  
     ⬇️  
-    **YOLO: Produkt-Erkennung**  
+    **2️⃣ YOLO-basierte Produkterkennung**  
     ⬇️  
-    **(Optional) Manuelle Korrektur in MakeSense**  
+    **3️⃣ (Optional) Manuelle Korrektur mit MakeSense**  
     ⬇️  
-    **Produkt-Crops**  
+    **4️⃣ Produkt-Crops**  
     ⬇️  
-    **OCR auf ausgewähltem Produkt**
+    **5️⃣ Optical character recognition (OCR) auf ausgewähltem Produkt**
     """
 )
 
 st.caption(
-    "➡️ Jeder Schritt ist unten als eigener Block umgesetzt. "
-    "Die Pipeline kann **ohne manuelle Korrekturen** vollständig durchlaufen werden."
+    "Jeder Schritt ist unten als eigener Block umgesetzt. "
+    "Die Pipeline kann vollständig **ohne manuelle Korrekturen** durchlaufen werden."
+)
+
+st.divider()
+
+st.markdown("## 🎯 Ziel der Demo")
+
+st.markdown(
+    """
+    Diese Demo zeigt eine Computer-Vision- und optical-character-recognition-(OCR)-Pipeline
+    zur automatischen Produkterkennung in Supermarkt-Flyern sowie zur Texterfassung
+    auf Produktebene.
+    """
+)
+
+st.markdown("### ⚠️ Aktuelle Limitationen")
+
+st.markdown(
+    """
+    - Es wird **nur die erste Seite** des PDFs verarbeitet  
+    - Das PDF ist **manuell bereitgestellt / kuratiert** (kein Web-Scraping)
+    - Optical character recognition (OCR) erfolgt **produktweise**, nicht seitenweise
+    - Es wird ein **kleines YOLOv8-Modell** aufgrund von Serverbeschränkungen verwendet
+    - Das Modell ist **ausschließlich auf Tegut-Flyern trainiert** und kann bei stark
+      abweichenden Layouts (z. B. saisonalen oder Weihnachtsflyern) versagen
+    - Erweiterungen wie OCR-Fehlerkorrektur, automatische Preiserkennung oder
+      zusätzliche Crop-Refinements sind **noch nicht implementiert**
+    """
 )
 
 st.divider()
@@ -304,10 +305,10 @@ st.divider()
 
 
 # ======================================================
-# 5️⃣ OCR auf Einzelprodukt
+# 4️⃣ OCR auf Einzelprodukt
 # ======================================================
 
-st.markdown("## 5️⃣ OCR auf Einzelprodukt")
+st.markdown("## 4️⃣OCR auf Einzelprodukt")
 st.caption(
     "Texterkennung erfolgt **nur auf einem ausgewählten Produkt-Crop**, "
     "nicht auf der gesamten Seite."
@@ -329,7 +330,7 @@ if "crop_paths" in st.session_state:
 
 
 # ======================================================
-# 5️⃣ OCR – Ein Crop auswählen & sofortige Vorschau
+# 4️⃣ OCR – Ein Crop auswählen & sofortige Vorschau
 # ======================================================
 
 if st.session_state.get("selected_crops"):
