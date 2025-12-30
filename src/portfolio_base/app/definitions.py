@@ -1,3 +1,27 @@
+import sys
+from pathlib import Path
+from datetime import datetime
+import tempfile
+import re
+import shutil
+import zipfile
+
+import numpy as np
+import cv2
+import streamlit as st
+from PIL import Image
+
+# -------------------------------------------------
+# src/ zum Python-Pfad hinzufügen (GANZ AM ANFANG!)
+# -------------------------------------------------
+SRC_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(SRC_ROOT))
+
+# -------------------------------------------------
+# Projekt-Imports
+# -------------------------------------------------
+from portfolio_base.tegut_ocr.yolo_detect import detect_products
+from portfolio_base.tegut_ocr.ocr_easy import extract_text_easyocr
 # ======================================================
 # 🔧 Hilfsfunktionen
 # ======================================================
