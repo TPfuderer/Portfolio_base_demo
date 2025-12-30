@@ -164,45 +164,74 @@ def get_yolo_page_images(run_dir: Path) -> list[Path]:
 
     return [pages[k] for k in sorted(pages)]
 
-
 # ======================================================
-# 1️⃣ PDF Upload (mit Beispiel-PDF)
+# 1️⃣ PDF Upload (optional mit Demo-PDF)
 # ======================================================
 
-sample_pdf_path = (
+st.markdown("## 📄 PDF-Eingabe")
+
+demo_pdf_path = (
     Path(__file__).resolve().parents[1]
     / "data"
-    / "sample"
-    / "demo.pdf"
+    / "input"
+    / "pdf_new"
+    / "tegut_test.pdf"
 )
 
-use_sample = st.button("📂 Beispiel-PDF laden")
-
-uploaded_file = st.file_uploader(
-    "📄 PDF-Seite hochladen",
-    type=["pdf"]
+use_demo = st.checkbox(
+    "📂 Demo-PDF verwenden (reale, unaufbereitete Flyer-Daten)",
+    value=True
 )
 
+uploaded_file = None
 pdf_bytes = None
 pdf_name = None
 
-if use_sample and sample_pdf_path.exists():
-    pdf_bytes = sample_pdf_path.read_bytes()
-    pdf_name = sample_pdf_path.name
+# --------------------------------------------------
+# Option A: Demo-PDF
+# --------------------------------------------------
+if use_demo:
+    if not demo_pdf_path.exists():
+        st.error("❌ Demo-PDF nicht gefunden.")
+        st.stop()
 
-elif uploaded_file is not None:
-    pdf_bytes = uploaded_file.read()
-    pdf_name = uploaded_file.name
+    pdf_bytes = demo_pdf_path.read_bytes()
+    pdf_name = demo_pdf_path.name
 
+# --------------------------------------------------
+# Option B: Eigene Datei hochladen
+# --------------------------------------------------
+else:
+    uploaded_file = st.file_uploader(
+        "📄 Eigene PDF-Seite hochladen",
+        type=["pdf"]
+    )
+
+    if uploaded_file is not None:
+        pdf_bytes = uploaded_file.read()
+        pdf_name = uploaded_file.name
+
+# --------------------------------------------------
+# Abbruch falls nichts gewählt
+# --------------------------------------------------
 if pdf_bytes is None:
+    st.info("⬆️ Wähle ein PDF (Demo oder Upload), um fortzufahren.")
     st.stop()
 
+# --------------------------------------------------
+# Einheitlicher Temp-Pfad (für YOLO / OCR)
+# --------------------------------------------------
 with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
     tmp.write(pdf_bytes)
     pdf_path = Path(tmp.name)
 
 st.success(f"PDF geladen: {pdf_name}")
 
+# --------------------------------------------------
+# PDF-Vorschau (Recruiter!)
+# --------------------------------------------------
+st.markdown("### 👀 Original-PDF (reale Flyer-Daten)")
+st.pdf(pdf_bytes, height=600)
 
 
 # ======================================================
