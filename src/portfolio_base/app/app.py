@@ -223,27 +223,80 @@ if st.button("🔍 Produkte erkennen"):
 
 
 # ======================================================
-# 3️⃣ MakeSense Export / Import
+# 3️⃣ MakeSense – Pre- & Post-Labeling
 # ======================================================
 
-if "RUN_DIR" in st.session_state:
-    if st.button("⬇️ Für MakeSense vorbereiten"):
-        out_dir = export_to_makesense_image_first(st.session_state["RUN_DIR"])
-        zip_path = zip_directory(out_dir)
-        st.download_button("📦 MakeSense ZIP", open(zip_path, "rb"), file_name="makesense_export.zip")
+st.markdown("## 🏷️ MakeSense – Manuelles Labeling")
 
-st.markdown("## ⬆️ MakeSense-Labels importieren")
-
-uploaded_labels = st.file_uploader(
-    "YOLO-Labels (*.txt)",
-    type=["txt"],
-    accept_multiple_files=True
+st.caption(
+    """
+    **MakeSense AI** ist ein webbasiertes Annotationstool für YOLO-Labels.  
+    Du kannst erkannte Produkte **manuell korrigieren**, **neu labeln**
+    und die Labels anschließend wieder hier importieren.
+    """
 )
 
-if uploaded_labels and st.button("📥 Labels importieren"):
-    import_from_makesense_image_first(uploaded_labels, st.session_state["RUN_DIR"])
-    st.session_state["crop_paths"] = recrop_from_yolo_labels(st.session_state["RUN_DIR"])
-    st.success("✔ Labels importiert & Crops neu erzeugt")
+st.markdown(
+    "🔗 **MakeSense öffnen:** "
+    "[https://www.makesense.ai](https://www.makesense.ai)",
+    unsafe_allow_html=True
+)
+
+action = st.selectbox(
+    "Aktion auswählen",
+    [
+        "— bitte wählen —",
+        "📤 Pre-Labeling: Bilder & Labels exportieren (für MakeSense)",
+        "📥 Post-Labeling: Labels aus MakeSense re-uploaden",
+    ]
+)
+
+# ------------------------------------------------------
+# Pre-Labeling: Export
+# ------------------------------------------------------
+if action.startswith("📤") and "RUN_DIR" in st.session_state:
+    st.info(
+        "Exportiert erkannte Seiten + YOLO-Labels "
+        "→ Upload ZIP direkt in MakeSense.",
+        icon="⬆️"
+    )
+
+    if st.button("📦 MakeSense-Export erstellen"):
+        out_dir = export_to_makesense_image_first(st.session_state["RUN_DIR"])
+        zip_path = zip_directory(out_dir)
+
+        st.download_button(
+            "⬇️ MakeSense ZIP herunterladen",
+            open(zip_path, "rb"),
+            file_name="makesense_export.zip"
+        )
+
+# ------------------------------------------------------
+# Post-Labeling: Re-Upload
+# ------------------------------------------------------
+if action.startswith("📥"):
+    st.info(
+        "Lade hier die **YOLO-Label-Dateien (*.txt)** hoch, "
+        "die du in MakeSense bearbeitet hast.",
+        icon="⬇️"
+    )
+
+    uploaded_labels = st.file_uploader(
+        "YOLO-Labels aus MakeSense",
+        type=["txt"],
+        accept_multiple_files=True
+    )
+
+    if uploaded_labels and st.button("🔄 Labels re-importieren"):
+        import_from_makesense_image_first(
+            uploaded_labels,
+            st.session_state["RUN_DIR"]
+        )
+        st.session_state["crop_paths"] = recrop_from_yolo_labels(
+            st.session_state["RUN_DIR"]
+        )
+
+        st.success("✔ Labels importiert & Produkt-Crops aktualisiert")
 
 
 # ======================================================
