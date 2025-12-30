@@ -231,7 +231,20 @@ st.success(f"PDF geladen: {pdf_name}")
 # PDF-Vorschau (Recruiter!)
 # --------------------------------------------------
 st.markdown("### 👀 Original-PDF (reale Flyer-Daten)")
-st.pdf(pdf_bytes, height=600)
+
+st.download_button(
+    "⬇️ PDF herunterladen / im Browser öffnen",
+    data=pdf_bytes,
+    file_name=pdf_name,
+    mime="application/pdf"
+)
+
+st.caption(
+    "Das PDF kann im Browser geöffnet werden. "
+    "Es zeigt **echte, unaufbereitete Flyer-Daten** "
+    "mit unregelmäßigem Layout (Messy Real-World Data)."
+)
+
 
 
 # ======================================================
