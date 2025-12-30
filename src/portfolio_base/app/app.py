@@ -373,65 +373,74 @@ if "crop_paths" in st.session_state:
 
 
 # ======================================================
-# 5️⃣ OCR-Vorbereitung + OCR (EIN Crop, Apply-Workflow)
+# 5️⃣ OCR – Ein Crop auswählen & sofortige Vorschau
 # ======================================================
 
 if st.session_state.get("selected_crops"):
-    st.markdown("## 🧠 OCR-Crop auswählen")
+    st.markdown("## 🧠 OCR – Einzelnes Produkt auswählen")
 
-    crop_names = [c["raw_path"].name for c in st.session_state["selected_crops"]]
-    selected_name = st.selectbox("Aktives OCR-Bild", crop_names)
+    # --------------------------------------------------
+    # Genau EIN Crop auswählen
+    # --------------------------------------------------
+    crop_map = {
+        c["raw_path"].name: c
+        for c in st.session_state["selected_crops"]
+    }
 
-    active_crop = next(
-        c for c in st.session_state["selected_crops"]
-        if c["raw_path"].name == selected_name
+    selected_name = st.selectbox(
+        "Produkt für OCR auswählen",
+        list(crop_map.keys())
     )
 
+    active_crop = crop_map[selected_name]
     st.session_state["active_ocr_crop"] = active_crop
 
-    # -------------------------------
-    # OCR-Sichtbereich einstellen
-    # -------------------------------
-    st.markdown("### 🧹 OCR-Sichtbereich einstellen")
+    # --------------------------------------------------
+    # Original Crop sofort anzeigen
+    # --------------------------------------------------
+    st.markdown("### 👁️ Produkt-Crop (Original)")
+
+    img_orig = cv2.imread(str(active_crop["raw_path"]))
+    img_orig = cv2.cvtColor(img_orig, cv2.COLOR_BGR2RGB)
+
+    st.image(
+        img_orig,
+        caption="Original Crop – ungefiltert",
+        width=300
+    )
+
+    # --------------------------------------------------
+    # OCR-Sichtbereich einstellen (Live Preview)
+    # --------------------------------------------------
+    st.markdown("### 🧹 OCR-Sichtbereich (Live-Vorschau)")
 
     top = st.slider("Oben ausblenden (%)", 0, 50, 0) / 100
     bottom = st.slider("Unten ausblenden (%)", 0, 50, 0) / 100
     left = st.slider("Links ausblenden (%)", 0, 50, 0) / 100
     right = st.slider("Rechts ausblenden (%)", 0, 50, 0) / 100
 
-    # -------------------------------
-    # Anwenden-Button (JETZT erst Bild ändern)
-    # -------------------------------
-    if st.button("🧹 OCR-Sichtbereich anwenden"):
-        img = cv2.imread(str(active_crop["ocr_path"]))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    masked = apply_ocr_mask(
+        img_orig,
+        top=top,
+        bottom=bottom,
+        left=left,
+        right=right,
+    )
 
-        masked = apply_ocr_mask(img, top, bottom, left, right)
-        st.session_state["ocr_preview_image"] = masked
+    st.markdown("### 👁️ OCR sieht diesen Bereich")
 
-    # -------------------------------
-    # Vorschau anzeigen
-    # -------------------------------
-    if "ocr_preview_image" in st.session_state:
-        st.markdown("### 👁️ OCR-Vorschau")
+    st.image(
+        masked,
+        caption="Live-OCR-Vorschau",
+        width=300
+    )
 
-        st.image(
-            st.session_state["ocr_preview_image"],
-            caption="OCR sieht genau diesen Bereich",
-            width=350
-        )
+    # --------------------------------------------------
+    # OCR explizit starten
+    # --------------------------------------------------
+    if st.button("🔤 OCR starten"):
+        res = extract_text_easyocr(masked)
 
-        # -------------------------------
-        # OCR ausführen
-        # -------------------------------
+        st.markdown("### 📑 OCR-Ergebnis")
+        st.text(res["text"])
 
-        st.info(
-            "EasyOCR erkennt nun Text auf den ausgewählten Produktbildern (ca. 10–20 Sekunden).",
-            icon="🔤"
-        )
-
-        if st.button("🔤 OCR starten"):
-            res = extract_text_easyocr(st.session_state["ocr_preview_image"])
-
-            st.markdown("### 📑 OCR-Ergebnis")
-            st.text(res["text"])
