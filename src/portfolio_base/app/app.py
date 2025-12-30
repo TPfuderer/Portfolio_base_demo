@@ -166,18 +166,42 @@ def get_yolo_page_images(run_dir: Path) -> list[Path]:
 
 
 # ======================================================
-# 1️⃣ PDF Upload
+# 1️⃣ PDF Upload (mit Beispiel-PDF)
 # ======================================================
 
-uploaded_file = st.file_uploader("📄 PDF-Seite hochladen", type=["pdf"])
-if uploaded_file is None:
+sample_pdf_path = (
+    Path(__file__).resolve().parents[1]
+    / "data"
+    / "sample"
+    / "demo.pdf"
+)
+
+use_sample = st.button("📂 Beispiel-PDF laden")
+
+uploaded_file = st.file_uploader(
+    "📄 PDF-Seite hochladen",
+    type=["pdf"]
+)
+
+pdf_bytes = None
+pdf_name = None
+
+if use_sample and sample_pdf_path.exists():
+    pdf_bytes = sample_pdf_path.read_bytes()
+    pdf_name = sample_pdf_path.name
+
+elif uploaded_file is not None:
+    pdf_bytes = uploaded_file.read()
+    pdf_name = uploaded_file.name
+
+if pdf_bytes is None:
     st.stop()
 
 with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-    tmp.write(uploaded_file.read())
+    tmp.write(pdf_bytes)
     pdf_path = Path(tmp.name)
 
-st.success(f"PDF geladen: {uploaded_file.name}")
+st.success(f"PDF geladen: {pdf_name}")
 
 
 
