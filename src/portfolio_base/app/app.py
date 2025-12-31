@@ -365,8 +365,28 @@ st.divider()
 
 st.markdown("## 4️⃣ Produkt-Crops")
 st.caption(
-    "Alle von YOLO erkannten Produkte werden hier als einzelne Bildausschnitte dargestellt."
+    "Oben: vollständige Seite mit YOLO-Bounding-Boxes (inkl. Confidence). "
+    "Darunter: einzelne Produkt-Crops."
 )
+
+# --------------------------------------------------
+# 🧠 Ganze Seite mit YOLO-Boxen anzeigen
+# --------------------------------------------------
+if "RUN_DIR" in st.session_state:
+    yolo_vis_dir = Path(st.session_state["RUN_DIR"]) / "yolo" / "detect"
+
+    yolo_images = sorted(yolo_vis_dir.glob("*.png"))
+
+    if yolo_images:
+        st.markdown("### 🧠 YOLO-Ergebnis (ganze Seite)")
+
+        st.image(
+            Image.open(yolo_images[0]),
+            use_container_width=True,
+            caption="YOLO: erkannte Produkte inkl. Confidence"
+        )
+    else:
+        st.warning("Kein YOLO-Visualisierungsbild gefunden.")
 
 if "crop_paths" in st.session_state:
 
