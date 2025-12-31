@@ -416,6 +416,8 @@ if st.session_state.get("selected_crops"):
     img_orig = cv2.imread(str(active_crop["raw_path"]))
     img_orig = cv2.cvtColor(img_orig, cv2.COLOR_BGR2RGB)
 
+
+
     # --------------------------------------------------
     # OCR-Sichtbereich einstellen
     # --------------------------------------------------
@@ -433,17 +435,18 @@ if st.session_state.get("selected_crops"):
         left=left,
         right=right,
     )
-
     # --------------------------------------------------
     # EINZIGES sichtbares Bild
     # --------------------------------------------------
     st.markdown("### 👁️ OCR sieht diesen Bereich")
+    st.write("Kann genutzt werden um Störtext auszublenden")
 
     st.image(
         masked,
         caption="Live-OCR-Vorschau",
         width=300
     )
+
 
     # --------------------------------------------------
     # OCR starten
@@ -452,15 +455,67 @@ if st.session_state.get("selected_crops"):
         "OCR mit EasyOCR dauert ca. 20 Sekunden."
     )
 
-    st.markdown("### 🔤 Texterkennung ausführen")
-
     if st.button("🔤 OCR starten", type="primary"):
         res = extract_text_easyocr(masked)
+
+        st.session_state["ocr_result"] = res
+        st.session_state["ocr_masked"] = masked
 
         st.markdown("### 📑 OCR-Ergebnis")
         st.text(res["text"])
 
+
 else:
     st.info("Bitte zuerst mindestens ein Produkt in Schritt 4 auswählen.")
+
+if "ocr_result" in st.session_state:
+
+    st.markdown("### 📤 Ergebnis exportieren")
+
+    if st.button("💾 OCR-Ergebnis als JSON exportieren"):
+        import json
+
+        export_data = {
+            "source": {
+                "flyer": pdf_name,
+                "page": 1,
+                "pipeline_version": "v1.0"
+            },
+            "product": {
+                "image_file": active_crop["raw_path"].name,
+                "bbox": active_crop.get("bbox", {})
+            },
+            "ocr": {
+                "engine": "easyocr",
+                "language": ["de"],
+                "masked_area": {
+                    "top": top,
+                    "bottom": bottom,
+                    "left": left,
+                    "right": right,
+                },
+                "text_raw": st.session_state["ocr_result"]["text"],
+                "confidence": st.session_state["ocr_result"].get("confidence")
+            }
+        }
+
+        export_path = (
+            Path(st.session_state["RUN_DIR"]) /
+            f"{active_crop['raw_path'].stem}_ocr.json"
+        )
+
+        with open(export_path, "w", encoding="utf-8") as f:
+            json.dump(export_data, f, indent=2, ensure_ascii=False)
+
+        st.success("✅ OCR-Ergebnis als JSON gespeichert")
+
+        # Optional: Download anbieten
+        st.download_button(
+            label="⬇️ JSON herunterladen",
+            data=json.dumps(export_data, indent=2, ensure_ascii=False),
+            file_name=export_path.name,
+            mime="application/json"
+        )
+
 
 
