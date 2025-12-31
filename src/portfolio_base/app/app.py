@@ -59,6 +59,31 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+st.markdown(
+    """
+    <style>
+    /* ================================
+       🔘 Große Action-Buttons
+       ================================ */
+    div.stButton > button {
+        width: 100%;
+        padding: 0.9rem 1.2rem;
+        font-size: 1.15rem;
+        font-weight: 600;
+        border-radius: 12px;
+    }
+
+    /* Extra Betonung für Hauptaktionen */
+    div.stButton > button:has(span:contains("Produkte erkennen")),
+    div.stButton > button:has(span:contains("OCR starten")) {
+        font-size: 1.25rem;
+        padding: 1.1rem 1.4rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 
 # ======================================================
 # 🎯 Ziel & Pipeline-Überblick
@@ -71,7 +96,7 @@ st.markdown(
 
 st.markdown("## 🧭 Pipeline-Struktur")
 
-st.markdown('<div class="pipeline-box">1️⃣ Input (PDF – eine Seite)</div>', unsafe_allow_html=True)
+st.markdown('<div class="pipeline-box">1️⃣ Input (PDF – eine TEGUT Seite)</div>', unsafe_allow_html=True)
 st.markdown('<div class="pipeline-arrow">⬇️</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="pipeline-box">2️⃣ YOLO-basierte Produkterkennung</div>', unsafe_allow_html=True)
@@ -144,6 +169,9 @@ use_demo = st.checkbox(
     "📂 Demo-PDF verwenden (reale, unaufbereitete Flyer-Daten)",
     value=True
 )
+
+st.write("Optional aktuelles tegut pdf herunterladen und eingeben, "
+         "bei großen Layout änderungen evtl. keine Erkennung möglich.")
 
 uploaded_file = None
 pdf_bytes = None
@@ -226,7 +254,9 @@ st.info(
 )
 
 
-if st.button("🔍 Produkte erkennen"):
+st.markdown("### 🔍 Produkterkennung starten")
+
+if st.button("🔍 Produkte erkennen", type="primary"):
     run_dir, crop_infos = detect_products(pdf_path)
     st.session_state["RUN_DIR"] = run_dir
     st.session_state["crop_paths"] = crop_infos
@@ -418,11 +448,18 @@ if st.session_state.get("selected_crops"):
     # --------------------------------------------------
     # OCR starten
     # --------------------------------------------------
-    if st.button("🔤 OCR starten"):
+    st.info(
+        "OCR mit EasyOCR dauert ca. 20 Sekunden."
+    )
+
+    st.markdown("### 🔤 Texterkennung ausführen")
+
+    if st.button("🔤 OCR starten", type="primary"):
         res = extract_text_easyocr(masked)
 
         st.markdown("### 📑 OCR-Ergebnis")
         st.text(res["text"])
+
 else:
     st.info("Bitte zuerst mindestens ein Produkt in Schritt 4 auswählen.")
 
