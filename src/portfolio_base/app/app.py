@@ -330,40 +330,44 @@ st.divider()
 
 
 # ======================================================
-# 4️⃣ OCR auf Einzelprodukt
+# 4️⃣ Produkt-Crops
 # ======================================================
 
-st.markdown("## 4️⃣OCR auf Einzelprodukt")
+st.markdown("## 4️⃣ Produkt-Crops")
 st.caption(
-    "Texterkennung erfolgt **nur auf einem ausgewählten Produkt-Crop**, "
-    "nicht auf der gesamten Seite."
+    "Alle von YOLO erkannten Produkte werden hier als einzelne Bildausschnitte dargestellt."
 )
 
 if "crop_paths" in st.session_state:
-    st.markdown("## 🧩 Produkt-Crops auswählen")
 
     selected = []
     cols = st.columns(4)
 
     for i, crop in enumerate(st.session_state["crop_paths"]):
         with cols[i % 4]:
-            st.image(Image.open(crop["raw_path"]), use_container_width=True)
-            if st.checkbox("Für OCR", key=f"sel_{i}"):
+            st.image(
+                Image.open(crop["raw_path"]),
+                use_container_width=True
+            )
+            if st.checkbox("Für OCR auswählen", key=f"crop_sel_{i}"):
                 selected.append(crop)
 
     st.session_state["selected_crops"] = selected
+else:
+    st.info("Bitte zuerst Produkterkennung (Schritt 2) ausführen.")
 
 
 # ======================================================
-# 4️⃣ OCR – Ein Crop auswählen & sofortige Vorschau
+# 5️⃣ Optical character recognition (OCR)
 # ======================================================
+
+st.markdown("## 5️⃣ Optical character recognition (OCR)")
+st.caption(
+    "OCR wird auf genau **einem ausgewählten Produkt-Crop** durchgeführt."
+)
 
 if st.session_state.get("selected_crops"):
-    st.markdown("## 🧠 OCR – Einzelnes Produkt auswählen")
 
-    # --------------------------------------------------
-    # Genau EIN Crop auswählen
-    # --------------------------------------------------
     crop_map = {
         c["raw_path"].name: c
         for c in st.session_state["selected_crops"]
@@ -375,26 +379,17 @@ if st.session_state.get("selected_crops"):
     )
 
     active_crop = crop_map[selected_name]
-    st.session_state["active_ocr_crop"] = active_crop
 
     # --------------------------------------------------
-    # Original Crop sofort anzeigen
+    # Bild laden (intern, nicht anzeigen)
     # --------------------------------------------------
-    st.markdown("### 👁️ Produkt-Crop (Original)")
-
     img_orig = cv2.imread(str(active_crop["raw_path"]))
     img_orig = cv2.cvtColor(img_orig, cv2.COLOR_BGR2RGB)
 
-    st.image(
-        img_orig,
-        caption="Original Crop – ungefiltert",
-        width=300
-    )
-
     # --------------------------------------------------
-    # OCR-Sichtbereich einstellen (Live Preview)
+    # OCR-Sichtbereich einstellen
     # --------------------------------------------------
-    st.markdown("### 🧹 OCR-Sichtbereich (Live-Vorschau)")
+    st.markdown("### 🧹 OCR-Sichtbereich")
 
     top = st.slider("Oben ausblenden (%)", 0, 50, 0) / 100
     bottom = st.slider("Unten ausblenden (%)", 0, 50, 0) / 100
@@ -409,6 +404,9 @@ if st.session_state.get("selected_crops"):
         right=right,
     )
 
+    # --------------------------------------------------
+    # EINZIGES sichtbares Bild
+    # --------------------------------------------------
     st.markdown("### 👁️ OCR sieht diesen Bereich")
 
     st.image(
@@ -418,11 +416,14 @@ if st.session_state.get("selected_crops"):
     )
 
     # --------------------------------------------------
-    # OCR explizit starten
+    # OCR starten
     # --------------------------------------------------
     if st.button("🔤 OCR starten"):
         res = extract_text_easyocr(masked)
 
         st.markdown("### 📑 OCR-Ergebnis")
         st.text(res["text"])
+else:
+    st.info("Bitte zuerst mindestens ein Produkt in Schritt 4 auswählen.")
+
 
