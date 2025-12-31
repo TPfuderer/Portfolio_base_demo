@@ -5,6 +5,8 @@ import tempfile
 import cv2
 import streamlit as st
 from PIL import Image
+import json
+
 
 # -------------------------------------------------
 # src/ zum Python-Pfad hinzufügen (GANZ AM ANFANG!)
@@ -152,10 +154,22 @@ st.divider()
 
 st.markdown("## 1️⃣ PDF-Eingabe")
 st.caption(
-    "Eingabe ist eine **einzelne PDF-Seite** mit realem Flyer-Layout "
+    "Eingabe ist eine **einzelne PDF-Seite** mit realem Supermarkt-Flyer-Layout "
     "(Rauschen, Preise, Bilder, unterschiedliche Schriftgrößen)."
 )
 
+st.write(
+    "Optional kannst du ein **aktuelles Tegut-Flyer-PDF** verwenden. "
+    "Bei **starken Layout-Änderungen** (z. B. saisonale Sonderausgaben) "
+    "kann die Erkennungsqualität eingeschränkt sein."
+)
+
+st.markdown(
+    "🔗 **Beispiel (öffentliches PDF):**  \n"
+    "[Tegut Flyer KW20 2025 – Thüringen]"
+    "(https://static.tegut.com/fileadmin/tegut_upload/Dokumente/"
+    "Aktuelle_Flugbl%C3%A4tter/tegut_FB-KW20-2025_thueringen.pdf)"
+)
 
 demo_pdf_path = (
     Path(__file__).resolve().parents[1]
@@ -166,12 +180,9 @@ demo_pdf_path = (
 )
 
 use_demo = st.checkbox(
-    "📂 Demo-PDF verwenden (reale, unaufbereitete Flyer-Daten)",
+    "📂 Demo-PDF verwenden (lokal, kuratiert)",
     value=True
 )
-
-st.write("Optional aktuelles tegut pdf herunterladen und eingeben, "
-         "bei großen Layout änderungen evtl. keine Erkennung möglich.")
 
 uploaded_file = None
 pdf_bytes = None
@@ -207,6 +218,7 @@ else:
 if pdf_bytes is None:
     st.info("⬆️ Wähle ein PDF (Demo oder Upload), um fortzufahren.")
     st.stop()
+
 
 # --------------------------------------------------
 # Einheitlicher Temp-Pfad (für YOLO / OCR)
@@ -471,13 +483,10 @@ if st.session_state.get("selected_crops"):
         width=300
     )
 
-
     # --------------------------------------------------
     # OCR starten
     # --------------------------------------------------
-    st.info(
-        "OCR mit EasyOCR dauert ca. 20 Sekunden."
-    )
+    st.info("OCR mit EasyOCR dauert ca. 20 Sekunden.")
 
     if st.button("🔤 OCR starten", type="primary"):
         res = extract_text_easyocr(masked)
@@ -489,156 +498,91 @@ if st.session_state.get("selected_crops"):
         st.text(res["text"])
 
 
-else:
-    st.info("Bitte zuerst mindestens ein Produkt in Schritt 4 auswählen.")
+    else:
+        st.info("Bitte zuerst mindestens ein Produkt in Schritt 4 auswählen.")
 
-if "ocr_result" in st.session_state:
+    # ==================================================
+    # 📤 Export (JSON / Bild)
+    # ==================================================
+    if "ocr_result" in st.session_state:
 
-    st.markdown("### 📤 Ergebnis exportieren")
+        st.markdown("### 📤 Ergebnis exportieren")
 
-    if st.button("💾 OCR-Ergebnis als JSON exportieren"):
-        import json
+        col1, col2 = st.columns(2)
+        with col1:
+            export_json = st.checkbox("📄 JSON exportieren", value=True)
+        with col2:
+            export_image = st.checkbox("🖼️ OCR-Bild exportieren", value=False)
 
-        export_data = {
-            "source": {
-                "flyer": pdf_name,
-                "page": 1,
-                "pipeline_version": "v1.0"
-            },
-            "product": {
-                "image_file": active_crop["raw_path"].name,
-                "bbox": active_crop.get("bbox", {})
-            },
-            "ocr": {
-                "engine": "easyocr",
-                "language": ["de"],
-                "masked_area": {
-                    "top": top,
-                    "bottom": bottom,
-                    "left": left,
-                    "right": right,
-                },
-                "text_raw": st.session_state["ocr_result"]["text"],
-                "confidence": st.session_state["ocr_result"].get("confidence")
-            }
-        }
+        # -------------------------
+        # Export ausführen
+        # -------------------------
+        if st.button("💾 Export erstellen", type="primary"):
 
-        export_path = (
-            Path(st.session_state["RUN_DIR"]) /
-            f"{active_crop['raw_path'].stem}_ocr.json"
-        )
+            run_dir = Path(st.session_state["RUN_DIR"])
+            stem = active_crop["raw_path"].stem
 
-        with open(export_path, "w", encoding="utf-8") as f:
-            json.dump(export_data, f, indent=2, ensure_ascii=False)
+            # ---------- JSON ----------
+            if export_json:
+                export_data = {
+                    "source": {
+                        "flyer": pdf_name,
+                        "page": 1,
+                        "pipeline_version": "v1.0"
+                    },
+                    "product": {
+                        "image_file": active_crop["raw_path"].name,
+                        "bbox": active_crop.get("bbox", {})
+                    },
+                    "ocr": {
+                        "engine": "easyocr",
+                        "language": ["de"],
+                        "masked_area": {
+                            "top": top,
+                            "bottom": bottom,
+                            "left": left,
+                            "right": right,
+                        },
+                        "text_raw": st.session_state["ocr_result"]["text"],
+                        "confidence": st.session_state["ocr_result"].get("confidence")
+                    }
+                }
 
-        st.success("✅ OCR-Ergebnis als JSON gespeichert")
+                json_bytes = json.dumps(export_data, indent=2, ensure_ascii=False)
+                st.session_state["export_json_bytes"] = json_bytes
+                st.session_state["export_json_name"] = f"{stem}_ocr.json"
 
-        # Optional: Download anbieten
+            # ---------- IMAGE ----------
+            if export_image:
+                from PIL import Image
+                import io
+
+                img = Image.fromarray(st.session_state["ocr_masked"])
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                buf.seek(0)
+
+                st.session_state["export_img_bytes"] = buf
+                st.session_state["export_img_name"] = f"{stem}_ocr_masked.png"
+
+            st.success("✅ Export vorbereitet – Download unten verfügbar")
+
+    # ==================================================
+    # ⬇️ Downloads (IMMER stabil)
+    # ==================================================
+    if "export_json_bytes" in st.session_state:
         st.download_button(
-            label="⬇️ JSON herunterladen",
-            data=json.dumps(export_data, indent=2, ensure_ascii=False),
-            file_name=export_path.name,
+            "⬇️ JSON herunterladen",
+            data=st.session_state["export_json_bytes"],
+            file_name=st.session_state["export_json_name"],
             mime="application/json"
         )
 
-        if "ocr_result" in st.session_state:
-
-            st.markdown("### 📤 Ergebnis exportieren")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                export_json = st.checkbox("📄 JSON exportieren", value=True)
-
-            with col2:
-                export_image = st.checkbox("🖼️ OCR-Bild exportieren", value=False)
-
-            if st.button("💾 Export ausführen", type="primary"):
-                import json
-                from PIL import Image
-
-                run_dir = Path(st.session_state["RUN_DIR"])
-                stem = active_crop["raw_path"].stem
-
-                if "ocr_result" in st.session_state:
-
-                    st.markdown("### 📤 Ergebnis exportieren")
-
-                    col1, col2 = st.columns(2)
-
-                    with col1:
-                        export_json = st.checkbox("📄 JSON exportieren", value=True)
-
-                    with col2:
-                        export_image = st.checkbox("🖼️ OCR-Bild exportieren", value=False)
-
-                    if st.button("💾 Export ausführen", type="primary"):
-                        import json
-                        from PIL import Image
-
-                        run_dir = Path(st.session_state["RUN_DIR"])
-                        stem = active_crop["raw_path"].stem
-
-                        # -------------------------
-                        # JSON EXPORT
-                        # -------------------------
-                        if export_json:
-                            export_data = {
-                                "source": {
-                                    "flyer": pdf_name,
-                                    "page": 1,
-                                    "pipeline_version": "v1.0"
-                                },
-                                "product": {
-                                    "image_file": active_crop["raw_path"].name,
-                                    "bbox": active_crop.get("bbox", {})
-                                },
-                                "ocr": {
-                                    "engine": "easyocr",
-                                    "language": ["de"],
-                                    "masked_area": {
-                                        "top": top,
-                                        "bottom": bottom,
-                                        "left": left,
-                                        "right": right,
-                                    },
-                                    "text_raw": st.session_state["ocr_result"]["text"],
-                                    "confidence": st.session_state["ocr_result"].get("confidence")
-                                }
-                            }
-
-                            json_path = run_dir / f"{stem}_ocr.json"
-                            with open(json_path, "w", encoding="utf-8") as f:
-                                json.dump(export_data, f, indent=2, ensure_ascii=False)
-
-                            st.success("✅ JSON exportiert")
-
-                            st.download_button(
-                                "⬇️ JSON herunterladen",
-                                data=json.dumps(export_data, indent=2, ensure_ascii=False),
-                                file_name=json_path.name,
-                                mime="application/json"
-                            )
-
-                        # -------------------------
-                        # IMAGE EXPORT
-                        # -------------------------
-                        if export_image:
-                            img = Image.fromarray(st.session_state["ocr_masked"])
-                            img_path = run_dir / f"{stem}_ocr_masked.png"
-                            img.save(img_path)
-
-                            st.success("✅ OCR-Bild exportiert")
-
-                            with open(img_path, "rb") as f:
-                                st.download_button(
-                                    "⬇️ OCR-Bild herunterladen",
-                                    data=f,
-                                    file_name=img_path.name,
-                                    mime="image/png"
-                                )
-
-
-
-
+    if "export_img_bytes" in st.session_state:
+        st.download_button(
+            "⬇️ OCR-Bild herunterladen",
+            data=st.session_state["export_img_bytes"],
+            file_name=st.session_state["export_img_name"],
+            mime="image/png"
+        )
 
