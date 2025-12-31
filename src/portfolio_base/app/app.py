@@ -375,7 +375,11 @@ st.caption(
 if "RUN_DIR" in st.session_state:
     yolo_vis_dir = Path(st.session_state["RUN_DIR"]) / "yolo" / "detect"
 
-    yolo_images = sorted(yolo_vis_dir.glob("*.png"))
+    yolo_images = sorted(
+        list(yolo_vis_dir.glob("*.png")) +
+        list(yolo_vis_dir.glob("*.jpg")) +
+        list(yolo_vis_dir.glob("*.jpeg"))
+    )
 
     if yolo_images:
         st.markdown("### 🧠 YOLO-Ergebnis (ganze Seite)")
