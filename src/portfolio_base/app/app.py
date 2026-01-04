@@ -132,18 +132,19 @@ st.markdown(
 
 st.markdown("### ⚠️ Aktuelle Limitationen")
 
-st.markdown(
-    """
-    - Es wird **nur die erste Seite** des PDFs verarbeitet  
-    - Das PDF ist **manuell bereitgestellt / kuratiert** (kein Web-Scraping)
-    - Optical character recognition (OCR) erfolgt **produktweise**, nicht seitenweise
-    - Es wird ein **kleines YOLOv8-Modell** aufgrund von Serverbeschränkungen verwendet
-    - Das Modell ist **ausschließlich auf Tegut-Flyern trainiert** und kann bei stark
-      abweichenden Layouts (z. B. saisonalen oder Weihnachtsflyern) versagen
-    - Erweiterungen wie OCR-Fehlerkorrektur, automatische Preiserkennung oder
-      zusätzliche Crop-Refinements sind **noch nicht implementiert**
-    """
-)
+with st.expander("Details anzeigen"):
+    st.markdown(
+        """
+        - Es wird **nur die erste Seite** des PDFs verarbeitet  
+        - Das PDF ist **manuell bereitgestellt / kuratiert** (kein Web-Scraping)
+        - Optical character recognition (OCR) erfolgt **produktweise**, nicht seitenweise
+        - Es wird ein **kleines YOLOv8-Modell** aufgrund von Serverbeschränkungen verwendet
+        - Das Modell ist **ausschließlich auf Tegut-Flyern trainiert**
+        - Erweiterungen wie OCR-Fehlerkorrektur, automatische Preiserkennung oder
+          zusätzliche Crop-Refinements sind **noch nicht implementiert**
+        """
+    )
+
 
 st.divider()
 
@@ -586,3 +587,29 @@ if st.session_state.get("selected_crops"):
             mime="image/png"
         )
 
+st.markdown("## 🗂️ Projektstruktur")
+
+with st.expander("Projektstruktur anzeigen"):
+    st.code(
+        """
+portfolio_base/
+├── tegut_ocr/
+│   ├── yolo_detect.py
+│   ├── ocr_easy.py
+│
+├── app/
+│   ├── definitions.py
+│
+├── data/
+│   ├── input/
+│   │   └── pdf_new/
+│
+├── runs/
+│   ├── yolo/
+│   ├── crops/
+│
+├── streamlit_apps/
+│   └── tegut_demo.py
+        """,
+        language="text"
+    )
