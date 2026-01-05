@@ -2,7 +2,6 @@ import sys
 from pathlib import Path
 import tempfile
 
-import cv2
 import streamlit as st
 from PIL import Image
 import json
@@ -278,6 +277,27 @@ if st.button("🔍 Produkte erkennen", type="primary"):
 st.divider()
 
 # ======================================================
+# 🧠 YOLO-Seitenvorschau (optional)
+# ======================================================
+
+if "RUN_DIR" in st.session_state:
+    with st.expander("🧠 YOLO-Ergebnis – erkannte Seiten anzeigen"):
+        page_images = get_yolo_page_images(
+            Path(st.session_state["RUN_DIR"])
+        )
+
+        if not page_images:
+            st.warning("Keine YOLO-Seitenbilder gefunden.")
+        else:
+            for img_path in page_images:
+                st.image(
+                    Image.open(img_path),
+                    use_container_width=True,
+                    caption=f"YOLO-Seite: {img_path.name}"
+                )
+
+
+# ======================================================
 # 3️⃣ Optional: Manuelle Korrektur (MakeSense)
 # ======================================================
 
@@ -450,10 +470,14 @@ if st.session_state.get("selected_crops"):
     # --------------------------------------------------
     # Bild laden (intern, nicht anzeigen)
     # --------------------------------------------------
+    try:
+        import cv2
+    except Exception:
+        st.error("OpenCV konnte nicht geladen werden (Cloud-Limitierung).")
+        st.stop()
+
     img_orig = cv2.imread(str(active_crop["raw_path"]))
     img_orig = cv2.cvtColor(img_orig, cv2.COLOR_BGR2RGB)
-
-
 
     # --------------------------------------------------
     # OCR-Sichtbereich einstellen
