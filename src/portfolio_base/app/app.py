@@ -4,6 +4,7 @@ import tempfile
 
 import streamlit as st
 from PIL import Image
+import numpy as np
 import json
 
 
@@ -470,14 +471,15 @@ if st.session_state.get("selected_crops"):
     # --------------------------------------------------
     # Bild laden (intern, nicht anzeigen)
     # --------------------------------------------------
+
+
     try:
-        import cv2
+        img = Image.open(active_crop["raw_path"])
     except Exception:
-        st.error("OpenCV konnte nicht geladen werden (Cloud-Limitierung).")
+        st.error("Produktbild konnte nicht geladen werden.")
         st.stop()
 
-    img_orig = cv2.imread(str(active_crop["raw_path"]))
-    img_orig = cv2.cvtColor(img_orig, cv2.COLOR_BGR2RGB)
+    img_orig = np.array(img)  # bereits RGB → keine Konvertierung nötig
 
     # --------------------------------------------------
     # OCR-Sichtbereich einstellen
