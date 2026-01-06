@@ -1,7 +1,6 @@
 streamlit
 ultralytics
 torch
-opencv-python-headless
 pillow
 numpy
 PyMuPDF
