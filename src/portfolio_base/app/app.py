@@ -94,7 +94,7 @@ st.markdown(
 # ======================================================
 
 st.markdown(
-    "## Demo einer Pipeline zur optical character recognition (OCR) "
+    "## Demo einer Pipeline"
     "für Produkterkennung und Texterfassung in Tegut-Supermarktflyern"
 )
 
