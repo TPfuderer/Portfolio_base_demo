@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Union
 import numpy as np
 import easyocr
-#import cv2
 
 # ======================================================
 # 🧠 EasyOCR Reader (einmal initialisieren!)

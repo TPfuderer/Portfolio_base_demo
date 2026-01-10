@@ -4,7 +4,6 @@ from uuid import uuid4
 
 import fitz
 import numpy as np
-#import cv2
 from PIL import Image
 from ultralytics import YOLO
 
