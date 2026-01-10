@@ -124,13 +124,14 @@ st.divider()
 
 st.markdown("## 🎯 Ziel der Demo")
 
-st.markdown(
-    """
-    Diese Demo zeigt eine Computer-Vision- und optical-character-recognition-(OCR)-Pipeline
-    zur automatischen Produkterkennung in Supermarkt-Flyern sowie zur Texterfassung
-    auf Produktebene.
-    """
-)
+with st.expander("Details anzeigen"):
+    st.markdown(
+        """
+        Diese Demo zeigt eine Computer-Vision- und optical-character-recognition-(OCR)-Pipeline
+        zur automatischen Produkterkennung in Supermarkt-Flyern sowie zur Texterfassung
+        auf Produktebene.
+        """
+    )
 
 st.markdown("### ⚠️ Aktuelle Limitationen")
 
