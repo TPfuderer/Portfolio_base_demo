@@ -40,8 +40,8 @@ st.markdown(
     """
     <style>
     .pipeline-box {
-        background-color: #111827;
-        border: 1px solid #374151;
+        background-color: #111827;   /* beibehalten */
+        border: 1px solid #374151;   /* beibehalten */
         border-radius: 12px;
         padding: 14px 18px;
         margin: 8px auto;
@@ -49,17 +49,20 @@ st.markdown(
         text-align: center;
         font-size: 1.05rem;
         font-weight: 500;
+        color: #FFFFFF;              /* ← DAS fehlt aktuell */
     }
+
     .pipeline-arrow {
         text-align: center;
         font-size: 1.8rem;
         margin: 6px 0;
-        color: #4B5563;
+        color: #4B5563;              /* gut im Light Mode */
     }
     </style>
     """,
     unsafe_allow_html=True
 )
+
 st.markdown(
     """
     <style>
