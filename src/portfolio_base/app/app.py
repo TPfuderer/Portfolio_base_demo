@@ -159,7 +159,6 @@ st.divider()
 st.markdown("## 1️⃣ PDF-Eingabe")
 st.caption(
     "Eingabe ist eine **einzelne PDF-Seite** mit realem Supermarkt-Flyer-Layout "
-    "(Rauschen, Preise, Bilder, unterschiedliche Schriftgrößen)."
 )
 
 st.write(
@@ -279,26 +278,6 @@ if st.button("🔍 Produkte erkennen", type="primary"):
     st.success(f"{len(crop_infos)} Produkte erkannt")
 
 st.divider()
-
-# ======================================================
-# 🧠 YOLO-Seitenvorschau (optional)
-# ======================================================
-
-if "RUN_DIR" in st.session_state:
-    with st.expander("🧠 YOLO-Ergebnis – erkannte Seiten anzeigen"):
-        page_images = get_yolo_page_images(
-            Path(st.session_state["RUN_DIR"])
-        )
-
-        if not page_images:
-            st.warning("Keine YOLO-Seitenbilder gefunden.")
-        else:
-            for img_path in page_images:
-                st.image(
-                    Image.open(img_path),
-                    use_container_width=True,
-                    caption=f"YOLO-Seite: {img_path.name}"
-                )
 
 
 # ======================================================
