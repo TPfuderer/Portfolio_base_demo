@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import fitz
 import numpy as np
-import cv2
+#import cv2
 from PIL import Image
 from ultralytics import YOLO
 
@@ -65,9 +65,9 @@ def detect_products(
     # --------------------------------------------------
     # 5️⃣ Debug visualization
     # --------------------------------------------------
-    _draw_filtered_boxes(results, filtered_dir, min_conf)
+    #_draw_filtered_boxes(results, filtered_dir, min_conf)
 
-    return run_dir, crop_infos
+    #return run_dir, crop_infos
 
 
 # ======================================================
@@ -161,15 +161,3 @@ def _save_labels(results, labels_dir: Path):
         result.save_txt(labels_dir / f"{stem}.txt", save_conf=True)
 
 
-def _draw_filtered_boxes(results, out_dir: Path, min_conf: float):
-    for result in results:
-        img = cv2.imread(result.path)
-
-        for box in result.boxes:
-            if float(box.conf[0]) < min_conf:
-                continue
-
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-        cv2.imwrite(str(out_dir / Path(result.path).name), img)
