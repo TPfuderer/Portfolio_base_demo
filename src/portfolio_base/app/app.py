@@ -380,10 +380,6 @@ st.divider()
 # ======================================================
 
 st.markdown("## 4️⃣ Produkt-Crops")
-st.caption(
-    "Oben: vollständige Seite mit YOLO-Bounding-Boxes (inkl. Confidence). "
-    "Darunter: einzelne Produkt-Crops."
-)
 
 # --------------------------------------------------
 # 🧠 Ganze Seite mit YOLO-Boxen anzeigen
@@ -407,6 +403,8 @@ if "RUN_DIR" in st.session_state:
         )
     else:
         st.warning("Kein YOLO-Visualisierungsbild gefunden.")
+
+st.markdown("Ein Produkt-Crop wählen um im nächsten Schritt OCR durchzuführen")
 
 if "crop_paths" in st.session_state:
 
