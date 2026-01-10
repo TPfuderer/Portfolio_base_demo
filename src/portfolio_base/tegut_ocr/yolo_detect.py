@@ -65,7 +65,7 @@ def detect_products(
     # --------------------------------------------------
     # 5️⃣ Debug visualization
     # --------------------------------------------------
-    _draw_filtered_boxes(results, filtered_dir, min_conf)
+    #_draw_filtered_boxes(results, filtered_dir, min_conf)
 
     return run_dir, crop_infos
 
