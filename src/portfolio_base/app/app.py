@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 import tempfile
-
 import streamlit as st
 from PIL import Image
 import numpy as np
