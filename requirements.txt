@@ -5,3 +5,4 @@ pillow
 numpy
 PyMuPDF
 easyocr
+opencv-python-headless==4.11.0.86
