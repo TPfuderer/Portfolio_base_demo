@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Union
 import numpy as np
 import easyocr
-#import cv2
+import cv2
 
 # ======================================================
 # 🧠 EasyOCR Reader (einmal initialisieren!)
@@ -28,48 +28,17 @@ def _get_reader():
 # ======================================================
 
 def preprocess_for_easyocr(img: np.ndarray) -> np.ndarray:
-    """
-    Minimal, stabile OCR-Vorverarbeitung OHNE OpenCV.
-    Liefert uint8-Graustufenbild für EasyOCR.
-    """
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # ---------------------------
-    # 1) RGB → Graustufen
-    # ---------------------------
-    if img.ndim == 3:
-        gray = (
-            0.299 * img[..., 0] +
-            0.587 * img[..., 1] +
-            0.114 * img[..., 2]
-        )
-    else:
-        gray = img.copy()
+    # Kontrast-Normalisierung
+    gray = cv2.normalize(
+        gray, None,
+        alpha=0, beta=255,
+        norm_type=cv2.NORM_MINMAX
+    )
 
-    gray = gray.astype(np.float32)
-
-    # ---------------------------
-    # 2) Kontrast-Normalisierung
-    # ---------------------------
-    min_val = gray.min()
-    max_val = gray.max()
-
-    if max_val > min_val:
-        gray = (gray - min_val) / (max_val - min_val)
-        gray = gray * 255.0
-
-    gray = gray.astype(np.uint8)
-
-    # ---------------------------
-    # 3) Sehr leichtes Glätten
-    # (billiger Ersatz für GaussianBlur)
-    # ---------------------------
-    gray = (
-        gray +
-        np.roll(gray, 1, axis=0) +
-        np.roll(gray, -1, axis=0) +
-        np.roll(gray, 1, axis=1) +
-        np.roll(gray, -1, axis=1)
-    ) // 5
+    # Leichtes Entrauschen
+    gray = cv2.GaussianBlur(gray, (3, 3), 0)
 
     return gray
 
@@ -126,9 +95,8 @@ def extract_text_easyocr(
     # ----------------------------------------------
     # Bild laden
     # ----------------------------------------------
-    from PIL import Image
     if isinstance(image, Path):
-        img = np.array(Image.open(image).convert("RGB"))
+        img = cv2.imread(str(image))
         if img is None:
             raise ValueError(f"Bild konnte nicht geladen werden: {image}")
     else:
