@@ -5,7 +5,7 @@ from uuid import uuid4
 import fitz
 import numpy as np
 from PIL import Image
-from ultralytics import YOLO
+#from ultralytics import YOLO
 
 from portfolio_base.tegut_ocr.paths import DATA_DIR, YOLO_MODEL
 
@@ -98,7 +98,16 @@ def _pdf_to_images(pdf_path: Path, dpi: int, pages_dir: Path) -> list[Path]:
 
 
 def _run_yolo(page_images: list[Path], yolo_dir: Path, min_conf: float):
+    try:
+        from ultralytics import YOLO
+    except Exception as e:
+        raise RuntimeError(
+            "YOLO could not be loaded on this environment. "
+            "This is expected on Streamlit Cloud without OpenGL."
+        ) from e
+
     model = YOLO(YOLO_MODEL)
+
 
     return model.predict(
         source=[str(p) for p in page_images],
