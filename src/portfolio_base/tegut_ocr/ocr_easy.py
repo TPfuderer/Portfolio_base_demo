@@ -28,19 +28,18 @@ def _get_reader():
 # ======================================================
 
 def preprocess_for_easyocr(img: np.ndarray) -> np.ndarray:
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    if img.ndim == 3 and img.shape[2] == 3:
+        # RGB → Gray (korrekt für PIL-Input)
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = img
 
-    # Kontrast-Normalisierung
     gray = cv2.normalize(
-        gray, None,
-        alpha=0, beta=255,
-        norm_type=cv2.NORM_MINMAX
+        gray, None, 0, 255, cv2.NORM_MINMAX
     )
-
-    # Leichtes Entrauschen
     gray = cv2.GaussianBlur(gray, (3, 3), 0)
-
     return gray
+
 
 
 # ======================================================
@@ -101,7 +100,8 @@ def extract_text_easyocr(
             raise ValueError(f"Bild konnte nicht geladen werden: {image}")
     else:
         img = image.copy()
-
+    # 🔴 DEBUG – exakt das Bild, das OCR bekommt
+    cv2.imwrite("/tmp/debug_ocr_input.png", img)
     # ----------------------------------------------
     # Preprocessing
     # ----------------------------------------------
