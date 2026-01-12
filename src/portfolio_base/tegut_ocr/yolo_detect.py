@@ -5,7 +5,6 @@ from uuid import uuid4
 import fitz
 import numpy as np
 from PIL import Image
-#from ultralytics import YOLO
 
 from portfolio_base.tegut_ocr.paths import DATA_DIR, YOLO_MODEL
 

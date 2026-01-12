@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Union
 import numpy as np
-import easyocr
+
 
 # ======================================================
 # 🧠 EasyOCR Reader (einmal initialisieren!)
@@ -10,16 +10,29 @@ import easyocr
 _reader = None
 
 
+_reader = None
+
+
 def _get_reader():
     global _reader
     if _reader is None:
+        try:
+            import easyocr
+        except Exception as e:
+            raise RuntimeError(
+                "EasyOCR could not be loaded on this environment. "
+                "This is expected on Streamlit Cloud without OpenGL."
+            ) from e
+
         _reader = easyocr.Reader(
             lang_list=["de", "en"],
             gpu=False,
-            recog_network="latin_g2",   # besser für Zahlen & Sonderzeichen
-            quantize=False              # höhere Präzision
+            recog_network="latin_g2",
+            quantize=False
         )
+
     return _reader
+
 
 
 # ======================================================
