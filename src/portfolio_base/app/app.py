@@ -272,10 +272,23 @@ st.info(
 st.markdown("### 🔍 Produkterkennung starten")
 
 if st.button("🔍 Produkte erkennen", type="primary"):
-    run_dir, crop_infos = detect_products(pdf_path)
-    st.session_state["RUN_DIR"] = run_dir
-    st.session_state["crop_paths"] = crop_infos
-    st.success(f"{len(crop_infos)} Produkte erkannt")
+    try:
+        result = detect_products(pdf_path)
+
+        if result is None:
+            st.error("detect_products returned None")
+            st.stop()
+
+        run_dir, crop_infos = result
+
+        st.session_state["RUN_DIR"] = run_dir
+        st.session_state["crop_paths"] = crop_infos
+        st.success(f"{len(crop_infos)} Produkte erkannt")
+
+    except Exception as e:
+        st.exception(e)
+        st.stop()
+
 
 st.divider()
 

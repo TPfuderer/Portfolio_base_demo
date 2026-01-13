@@ -19,6 +19,8 @@ def detect_products(
     dpi: int = 350,
     min_conf: float = 0.8
 ):
+    print("ENTER detect_products")
+
     """
     Detect products on a SINGLE PDF page.
     Creates its own isolated run_dir (demo & cloud safe).
@@ -69,7 +71,13 @@ def detect_products(
     # --------------------------------------------------
     #_draw_filtered_boxes(results, filtered_dir, min_conf)
 
+    if crop_infos is None:
+        crop_infos = []
+    print("EXIT detect_products", run_dir, len(crop_infos))
+
     return run_dir, crop_infos
+
+
 
 
 # ======================================================
