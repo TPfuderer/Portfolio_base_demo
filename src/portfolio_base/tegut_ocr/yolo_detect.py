@@ -16,7 +16,7 @@ from portfolio_base.tegut_ocr.paths import DATA_DIR, YOLO_MODEL
 
 def detect_products(
     pdf_path: Path,
-    dpi: int = 450,
+    dpi: int = 350,
     min_conf: float = 0.8
 ):
     """
@@ -49,7 +49,10 @@ def detect_products(
     # --------------------------------------------------
     # 2️⃣ YOLO inference
     # --------------------------------------------------
-    results = _run_yolo(page_images, yolo_dir, min_conf)
+    try:
+        results = _run_yolo(page_images, yolo_dir, min_conf)
+    except Exception as e:
+        raise RuntimeError(f"YOLO failed: {e}")
 
     # --------------------------------------------------
     # 3️⃣ Cropping
