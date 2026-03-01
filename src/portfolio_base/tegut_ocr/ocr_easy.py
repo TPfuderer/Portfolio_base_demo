@@ -1,107 +1,129 @@
 from pathlib import Path
+import shutil
+import tempfile
+import threading
 from typing import Union
-import numpy as np
-import easyocr
+import zipfile
+import zlib
+
 import cv2
+import easyocr
+import numpy as np
+
 
 # ======================================================
-# 🧠 EasyOCR Reader (einmal initialisieren!)
+# EasyOCR Reader (initialize once, safely)
 # ======================================================
 
 _reader = None
+_reader_lock = threading.Lock()
+EASYOCR_MODEL_DIR = Path(tempfile.gettempdir()) / "easyocr_models"
+
+
+def _build_reader():
+    EASYOCR_MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    return easyocr.Reader(
+        lang_list=["de", "en"],
+        gpu=False,
+        recog_network="latin_g2",  # better for digits and symbols
+        quantize=False,             # higher precision
+        model_storage_directory=str(EASYOCR_MODEL_DIR),
+    )
+
+
+def _clear_corrupted_easyocr_cache():
+    # A partial/corrupted model archive can cause zlib/zip errors on unzip.
+    if EASYOCR_MODEL_DIR.exists():
+        shutil.rmtree(EASYOCR_MODEL_DIR, ignore_errors=True)
 
 
 def _get_reader():
     global _reader
-    if _reader is None:
-        _reader = easyocr.Reader(
-            lang_list=["de", "en"],
-            gpu=False,
-            recog_network="latin_g2",   # besser für Zahlen & Sonderzeichen
-            quantize=False              # höhere Präzision
-        )
+
+    if _reader is not None:
+        return _reader
+
+    with _reader_lock:
+        if _reader is not None:
+            return _reader
+
+        try:
+            _reader = _build_reader()
+        except (zlib.error, zipfile.BadZipFile, EOFError):
+            _clear_corrupted_easyocr_cache()
+            _reader = _build_reader()
+
     return _reader
 
 
 # ======================================================
-# 🔍 Preprocessing (EasyOCR-freundlich, minimal)
+# Preprocessing (minimal, OCR friendly)
 # ======================================================
 
 def preprocess_for_easyocr(img: np.ndarray) -> np.ndarray:
     if img.ndim == 3 and img.shape[2] == 3:
-        # RGB → Gray (korrekt für PIL-Input)
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     else:
         gray = img
 
-    gray = cv2.normalize(
-        gray, None, 0, 255, cv2.NORM_MINMAX
-    )
+    gray = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
     gray = cv2.GaussianBlur(gray, (3, 3), 0)
     return gray
 
 
-
 # ======================================================
-# 🧹 OCR-spezifisches Cleanup (kein Parsing!)
+# OCR cleanup (no semantic parsing)
 # ======================================================
 
 def _clean_easyocr_text(text: str) -> str:
     replacements = {
         " ,": ",",
         " .": ".",
-        "€ .": "€",
-        "glnstiger": "günstiger",
-        "Glnstiger": "Günstiger",
+        "\u20ac .": "\u20ac",
+        "glnstiger": "g\u00fcnstiger",
+        "Glnstiger": "G\u00fcnstiger",
     }
 
-    for k, v in replacements.items():
-        text = text.replace(k, v)
+    for old, new in replacements.items():
+        text = text.replace(old, new)
 
-    # Mehrfach-Leerzeichen entfernen
     text = " ".join(text.split())
-
     return text.strip()
 
 
 # ======================================================
-# 🔍 Public OCR API
+# Public OCR API
 # ======================================================
 
 def extract_text_easyocr(
     image: Union[np.ndarray, Path],
-    min_confidence: float = 0.3
+    min_confidence: float = 0.3,
 ) -> dict:
     """
-    OCR für Flyer-Crops (Deutsch, Zahlen, Sonderzeichen)
+    OCR for flyer crops.
 
     Parameters
     ----------
     image : np.ndarray | Path
-        Bild als Array oder Pfad
+        Image array or image path
     min_confidence : float
-        Mindest-Confidence für Textzeilen
-
-    Returns
-    -------
-    dict mit:
-        text: str
-        lines: list[str]
-        confidences: list[float]
-        mean_confidence: float
+        Minimum confidence threshold for text lines
     """
 
     # ----------------------------------------------
-    # Bild laden
+    # Load image
     # ----------------------------------------------
     if isinstance(image, Path):
-        img = cv2.imread(str(image))
-        if img is None:
-            raise ValueError(f"Bild konnte nicht geladen werden: {image}")
+        img_bgr = cv2.imread(str(image))
+        if img_bgr is None:
+            raise ValueError(f"Image could not be loaded: {image}")
+        img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     else:
         img = image.copy()
-    # 🔴 DEBUG – exakt das Bild, das OCR bekommt
-    cv2.imwrite("/tmp/debug_ocr_input.png", img)
+
+    debug_path = Path(tempfile.gettempdir()) / "debug_ocr_input.png"
+    cv2.imwrite(str(debug_path), img)
+
     # ----------------------------------------------
     # Preprocessing
     # ----------------------------------------------
@@ -121,12 +143,16 @@ def extract_text_easyocr(
         low_text=0.4,
         contrast_ths=0.1,
         adjust_contrast=0.5,
-        allowlist="0123456789.,€% abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZäöüÄÖÜß"
-        #                ↑ wichtiges Leerzeichen hier
+        allowlist=(
+            "0123456789.,\u20ac% "
+            "abcdefghijklmnopqrstuvwxyz"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "\u00e4\u00f6\u00fc\u00c4\u00d6\u00dc\u00df"
+        ),
     )
 
     # ----------------------------------------------
-    # Ergebnisse sammeln
+    # Collect outputs
     # ----------------------------------------------
     lines: list[str] = []
     confidences: list[float] = []
