@@ -141,6 +141,20 @@ def _load_image_rgb(img_path: Path) -> np.ndarray:
     return cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
 
+def _load_result_image_rgb(result) -> tuple[Path, np.ndarray]:
+    """Prefer YOLO's in-memory image to avoid fragile path resolution like 'image0.jpg'."""
+    img_path = Path(getattr(result, "path", "image0.jpg"))
+    orig_img = getattr(result, "orig_img", None)
+
+    if isinstance(orig_img, np.ndarray):
+        if orig_img.ndim == 3 and orig_img.shape[2] >= 3:
+            # Ultralytics stores BGR in orig_img, convert to RGB for PIL consistency.
+            return img_path, orig_img[:, :, :3][:, :, ::-1].copy()
+        return img_path, orig_img.copy()
+
+    return img_path, _load_image_rgb(img_path)
+
+
 def _extract_crops(results, crops_dir: Path, min_conf: float) -> list[dict]:
     crop_infos = []
 
@@ -150,8 +164,7 @@ def _extract_crops(results, crops_dir: Path, min_conf: float) -> list[dict]:
     ocr_dir.mkdir(parents=True, exist_ok=True)
 
     for result in results:
-        img_path = Path(result.path)
-        img_np = _load_image_rgb(img_path)
+        img_path, img_np = _load_result_image_rgb(result)
 
         for i, box in enumerate(result.boxes):
             conf = float(box.conf[0])
