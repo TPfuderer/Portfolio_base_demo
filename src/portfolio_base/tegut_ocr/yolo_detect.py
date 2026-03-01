@@ -2,6 +2,7 @@ from pathlib import Path
 from datetime import datetime
 from uuid import uuid4
 
+import cv2
 import fitz
 import numpy as np
 from PIL import Image
@@ -123,6 +124,23 @@ def _run_yolo(page_images: list[Path], yolo_dir: Path, min_conf: float):
     )
 
 
+def _load_image_rgb(img_path: Path) -> np.ndarray:
+    """Load an image as RGB and fall back to OpenCV if PIL was patched by Ultralytics."""
+    try:
+        return np.array(Image.open(img_path).convert("RGB"))
+    except ModuleNotFoundError as exc:
+        if exc.name != "pi_heif":
+            raise
+    except ImportError as exc:
+        if "pi_heif" not in str(exc):
+            raise
+
+    img_bgr = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+    if img_bgr is None:
+        raise FileNotFoundError(f"Failed to load image: {img_path}")
+    return cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+
+
 def _extract_crops(results, crops_dir: Path, min_conf: float) -> list[dict]:
     crop_infos = []
 
@@ -133,8 +151,7 @@ def _extract_crops(results, crops_dir: Path, min_conf: float) -> list[dict]:
 
     for result in results:
         img_path = Path(result.path)
-        img = Image.open(img_path)
-        img_np = np.array(img)
+        img_np = _load_image_rgb(img_path)
 
         for i, box in enumerate(result.boxes):
             conf = float(box.conf[0])

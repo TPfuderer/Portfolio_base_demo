@@ -2,6 +2,7 @@ streamlit
 ultralytics
 torch
 pillow
+pi-heif
 numpy
 PyMuPDF
 easyocr
